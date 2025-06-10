@@ -30,25 +30,44 @@ def dense(x, W, b):
 # Infer TensorFlow h5 model using numpy
 # Support only Dense, Flatten, relu, softmax now
 def nn_forward_h5(model_arch, weights, data):
+    # 1. 把 arr_0,arr_1,… 按數字排好
     x = data
+    idx = 0
     for layer in model_arch:
-        lname = layer['name']
         ltype = layer['type']
-        cfg = layer['config']
-        wnames = layer['weights']
-
         if ltype == "Flatten":
             x = flatten(x)
         elif ltype == "Dense":
-            W = weights[wnames[0]]
-            b = weights[wnames[1]]
+            W, b = weights[idx], weights[idx+1]
+            idx += 2
             x = dense(x, W, b)
-            if cfg.get("activation") == "relu":
+            act = layer['config'].get("activation", "")
+            if act == "relu":
                 x = relu(x)
-            elif cfg.get("activation") == "softmax":
+            elif act == "softmax":
                 x = softmax(x)
-
+        else:
+            raise ValueError(f"Unsupported layer type: {ltype}")
     return x
+    # x = data
+    # for layer in model_arch:
+    #     lname = layer['name']
+    #     ltype = layer['type']
+    #     cfg = layer['config']
+    #     wnames = layer['weights']
+
+    #     if ltype == "Flatten":
+    #         x = flatten(x)
+    #     elif ltype == "Dense":
+    #         W = weights[wnames[0]]
+    #         b = weights[wnames[1]]
+    #         x = dense(x, W, b)
+    #         if cfg.get("activation") == "relu":
+    #             x = relu(x)
+    #         elif cfg.get("activation") == "softmax":
+    #             x = softmax(x)
+
+    # return x
 
 
 # You are free to replace nn_forward_h5() with your own implementation 
