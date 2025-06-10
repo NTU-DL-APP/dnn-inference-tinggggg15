@@ -35,7 +35,6 @@ def nn_forward_h5(model_arch, raw_weights, data):
     if hasattr(raw_weights, 'files'):
         npz = raw_weights
         def sort_key(name):
-            # 'dense1_kernel' → 层号 1，kernel 排 bias 之前
             idx = int(name.replace('dense', '').split('_')[0])
             rank = 0 if 'kernel' in name else 1
             return (idx, rank)
@@ -44,25 +43,25 @@ def nn_forward_h5(model_arch, raw_weights, data):
     else:
         weight_list = raw_weights
 
-    # 2) 如果 model_arch 是 dict（Keras JSON），抽出它的 layers list
+    # 2) Extract layers list from JSON if needed
     if isinstance(model_arch, dict) and 'config' in model_arch:
         layers = model_arch['config']['layers']
     else:
         layers = model_arch
 
-    # 3) 依序做 forward
+    # 3) Forward pass
     x = data
     w_idx = 0
     for layer in layers:
-        # class_name for JSON, or type if you passed a simpler list
+        # Determine layer type (JSON uses 'class_name')
         ltype = layer.get('class_name', layer.get('type'))
-        cfg   = layer['config']
+        cfg = layer['config']
 
         if ltype == 'Flatten':
             x = flatten(x)
 
         elif ltype == 'Dense':
-            W, b = weight_list[w_idx], weight_list[w_idx+1]
+            W, b = weight_list[w_idx], weight_list[w_idx + 1]
             w_idx += 2
             x = dense(x, W, b)
 
@@ -73,7 +72,7 @@ def nn_forward_h5(model_arch, raw_weights, data):
                 x = softmax(x)
 
         else:
-            # 如果有别的层，可以在这儿 extend
+            # unsupported layer types can be extended here
             continue
 
     return x
