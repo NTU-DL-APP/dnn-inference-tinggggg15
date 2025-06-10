@@ -10,10 +10,14 @@ def relu(x):
 def softmax(x):
     # TODO: Implement the SoftMax function
     # return x
+    x = np.asarray(x, dtype=np.float64)                  # 確保是浮點數
+    # 1) 在最後一個維度上減去最大值以提升穩定性
     x_shifted = x - np.max(x, axis=-1, keepdims=True)
+    # 2) 計算指數
     exps = np.exp(x_shifted)
-    sum_exps = np.sum(exps, axis=-1, keepdims=True)
-    return exps / sum_exps
+    # 3) 在最後一個維度上求和，然後逐元素相除
+    sums = np.sum(exps, axis=-1, keepdims=True)
+    return exps / sums
 
 # === Flatten ===
 def flatten(x):
