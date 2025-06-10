@@ -29,25 +29,53 @@ def dense(x, W, b):
 
 # Infer TensorFlow h5 model using numpy
 # Support only Dense, Flatten, relu, softmax now
-def nn_forward_h5(model_arch, weights, data):
+def nn_forward_h5(model_arch, raw_weights, data):
     # 1. 把 arr_0,arr_1,… 按數字排好
+    # 1) 如果是 NpzFile，就按 layer/bias 顺序把它转成 list
+    if hasattr(raw_weights, 'files'):
+        npz = raw_weights
+        def sort_key(name):
+            # 'dense1_kernel' → 层号 1，kernel 排 bias 之前
+            idx = int(name.replace('dense', '').split('_')[0])
+            rank = 0 if 'kernel' in name else 1
+            return (idx, rank)
+        keys = sorted(npz.files, key=sort_key)
+        weight_list = [npz[k] for k in keys]
+    else:
+        weight_list = raw_weights
+
+    # 2) 如果 model_arch 是 dict（Keras JSON），抽出它的 layers list
+    if isinstance(model_arch, dict) and 'config' in model_arch:
+        layers = model_arch['config']['layers']
+    else:
+        layers = model_arch
+
+    # 3) 依序做 forward
     x = data
-    idx = 0
-    for layer in model_arch:
-        ltype = layer['type']
-        if ltype == "Flatten":
+    w_idx = 0
+    for layer in layers:
+        # class_name for JSON, or type if you passed a simpler list
+        ltype = layer.get('class_name', layer.get('type'))
+        cfg   = layer['config']
+
+        if ltype == 'Flatten':
             x = flatten(x)
-        elif ltype == "Dense":
-            W, b = weights[idx], weights[idx+1]
-            idx += 2
+
+        elif ltype == 'Dense':
+            W, b = weight_list[w_idx], weight_list[w_idx+1]
+            w_idx += 2
             x = dense(x, W, b)
-            act = layer['config'].get("activation", "")
-            if act == "relu":
+
+            act = cfg.get('activation', '')
+            if act == 'relu':
                 x = relu(x)
-            elif act == "softmax":
+            elif act == 'softmax':
                 x = softmax(x)
+
         else:
-            raise ValueError(f"Unsupported layer type: {ltype}")
+            # 如果有别的层，可以在这儿 extend
+            continue
+
     return x
     # x = data
     # for layer in model_arch:
